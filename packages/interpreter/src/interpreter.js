@@ -81,6 +81,7 @@ export class Interpreter {
     if (this.listeners[event_name] === undefined) {
       this.listeners[event_name] = 0;
       this.handlers[event_name] = handler;
+      console.log("adding event listener", event_name);
       this.root.addEventListener(event_name, handler);
     } else {
       this.listeners[event_name]++;
@@ -194,6 +195,13 @@ export class Interpreter {
         // method is not used by the web implementation
         let handler = (event) => {
           let target = event.target;
+          console.log("event, target", event, target);
+
+          if (event.type === "mouseenter" || event.type === "mouseleave") {
+            // target = event.currentTarget;
+            console.log("mouse enter custom");
+          }
+
           if (target != null) {
             let realId = target.getAttribute(`data-dioxus-id`);
             let shouldPreventDefault = target.getAttribute(

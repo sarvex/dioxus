@@ -65,10 +65,10 @@ impl Parse for Element {
 
                 // todo: add a message saying you need to include commas between fields
                 if content.parse::<Token![,]>().is_err() {
-                    proc_macro_error::emit_error!(
-                        ident,
-                        "This attribute is missing a trailing comma"
-                    )
+                    // proc_macro_error::emit_error!(
+                    //     ident,
+                    //     "This attribute is missing a trailing comma"
+                    // )
                 }
                 continue;
             }
@@ -126,10 +126,10 @@ impl Parse for Element {
 
                 // todo: add a message saying you need to include commas between fields
                 if content.parse::<Token![,]>().is_err() {
-                    proc_macro_error::emit_error!(
-                        ident,
-                        "This attribute is missing a trailing comma"
-                    )
+                    // proc_macro_error::emit_error!(
+                    //     ident,
+                    //     "This attribute is missing a trailing comma"
+                    // )
                 }
                 continue;
             }
@@ -141,31 +141,32 @@ impl Parse for Element {
             if (content.peek(LitStr) && content.peek2(Token![:])) && !content.peek3(Token![:]) {
                 let ident = content.parse::<LitStr>().unwrap();
                 let name = ident.value();
-                proc_macro_error::emit_error!(
-                    ident, "This attribute `{}` is in the wrong place.", name;
-                    help =
-"All attribute fields must be placed above children elements.
 
-                div {
-                   attr: \"...\",  <---- attribute is above children
-                   div { }       <---- children are below attributes
-                }";
-                )
+                //                 proc_macro_error::emit_error!(
+                //                     ident, "This attribute `{}` is in the wrong place.", name;
+                //                     help =
+                // "All attribute fields must be placed above children elements.
+
+                //                 div {
+                //                    attr: \"...\",  <---- attribute is above children
+                //                    div { }       <---- children are below attributes
+                //                 }";
+                //                 )
             }
 
             if (content.peek(Ident) && content.peek2(Token![:])) && !content.peek3(Token![:]) {
                 let ident = content.parse::<Ident>().unwrap();
                 let name = ident.to_string();
-                proc_macro_error::emit_error!(
-                    ident, "This attribute `{}` is in the wrong place.", name;
-                    help =
-"All attribute fields must be placed above children elements.
+                //                 proc_macro_error::emit_error!(
+                //                     ident, "This attribute `{}` is in the wrong place.", name;
+                //                     help =
+                // "All attribute fields must be placed above children elements.
 
-                div {
-                   attr: \"...\",  <---- attribute is above children
-                   div { }       <---- children are below attributes
-                }";
-                )
+                //                 div {
+                //                    attr: \"...\",  <---- attribute is above children
+                //                    div { }       <---- children are below attributes
+                //                 }";
+                //                 )
             }
 
             children.push(content.parse::<BodyNode>()?);

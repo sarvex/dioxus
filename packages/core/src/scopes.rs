@@ -652,6 +652,9 @@ impl ScopeState {
     /// When the component is dropped, so is the context. Be aware of this behavior when consuming
     /// the context via Rc/Weak.
     ///
+    /// Note that providing a new context of the same type will *not* bump the old context out. This method will
+    /// return the original context with no indication that the operation failed.
+    ///
     /// # Example
     ///
     /// ```rust, ignore
@@ -667,74 +670,31 @@ impl ScopeState {
     ///     rsx!(cx, div { "hello {state.0}" })
     /// }
     /// ```
-    pub fn provide_context<T: 'static + Clone>(&self, value: T) -> T {
-        self.shared_contexts
+    pub fn provide_context<T: 'static>(&self, value: T) -> &T {
+        let val = Box::new(value);
+
+        let raw_ptr = self
+            .shared_contexts
             .borrow_mut()
-            .insert(TypeId::of::<T>(), Box::new(value.clone()))
-            .and_then(|f| f.downcast::<T>().ok());
-        value
-    }
+            .entry(TypeId::of::<T>())
+            .or_insert_with(|| val)
+            .as_ref()
+            .downcast_ref::<T>()
+            .unwrap() as *const _;
 
-    /// Provide a context for the root component from anywhere in your app.
-    ///
-    ///
-    /// # Example
-    ///
-    /// ```rust, ignore
-    /// struct SharedState(&'static str);
-    ///
-    /// static App: Component = |cx| {
-    ///     cx.use_hook(|_| cx.provide_root_context(SharedState("world")));
-    ///     rsx!(cx, Child {})
-    /// }
-    ///
-    /// static Child: Component = |cx| {
-    ///     let state = cx.consume_state::<SharedState>();
-    ///     rsx!(cx, div { "hello {state.0}" })
-    /// }
-    /// ```
-    pub fn provide_root_context<T: 'static + Clone>(&self, value: T) -> T {
-        // if we *are* the root component, then we can just provide the context directly
-        if self.scope_id() == ScopeId(0) {
-            self.shared_contexts
-                .borrow_mut()
-                .insert(TypeId::of::<T>(), Box::new(value.clone()))
-                .and_then(|f| f.downcast::<T>().ok());
-            return value;
-        }
-
-        let mut search_parent = self.parent_scope;
-
-        while let Some(parent) = search_parent.take() {
-            let parent = unsafe { &*parent };
-
-            if parent.scope_id() == ScopeId(0) {
-                let exists = parent
-                    .shared_contexts
-                    .borrow_mut()
-                    .insert(TypeId::of::<T>(), Box::new(value.clone()));
-
-                if exists.is_some() {
-                    log::warn!("Context already provided to parent scope - replacing it");
-                }
-                return value;
-            }
-
-            search_parent = parent.parent_scope;
-        }
-
-        unreachable!("all apps have a root scope")
+        // this is safe because child components are dropped before parents.
+        // We also only give out an immutable reference, so there's no need to keep track anyways
+        // If an implementation wants to provide a way of getting a handle for async, then they can
+        unsafe { &*raw_ptr }
     }
 
     /// Try to retrieve a shared state with type T from the any parent Scope.
-    pub fn consume_context<T: 'static + Clone>(&self) -> Option<T> {
+    pub fn consume_context<T: 'static>(&self) -> Option<&T> {
         if let Some(shared) = self.shared_contexts.borrow().get(&TypeId::of::<T>()) {
-            Some(
-                (*shared
-                    .downcast_ref::<T>()
-                    .expect("Context of type T should exist"))
-                .clone(),
-            )
+            let ptr: *const T = shared
+                .downcast_ref::<T>()
+                .expect("Context of type T should exist");
+            Some(unsafe { &*ptr })
         } else {
             let mut search_parent = self.parent_scope;
 
@@ -742,12 +702,10 @@ impl ScopeState {
                 // safety: all parent pointers are valid thanks to the bump arena
                 let parent = unsafe { &*parent_ptr };
                 if let Some(shared) = parent.shared_contexts.borrow().get(&TypeId::of::<T>()) {
-                    return Some(
-                        shared
-                            .downcast_ref::<T>()
-                            .expect("Context of type T should exist")
-                            .clone(),
-                    );
+                    let ptr: *const T = shared
+                        .downcast_ref::<T>()
+                        .expect("Context of type T should exist");
+                    return Some(unsafe { &*ptr });
                 }
                 search_parent = parent.parent_scope;
             }

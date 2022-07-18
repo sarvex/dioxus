@@ -671,21 +671,17 @@ impl ScopeState {
     /// }
     /// ```
     pub fn provide_context<T: 'static>(&self, value: T) -> &T {
-        let val = Box::new(value);
-
-        let raw_ptr = self
-            .shared_contexts
+        self.shared_contexts
             .borrow_mut()
             .entry(TypeId::of::<T>())
-            .or_insert_with(|| val)
+            .or_insert_with(|| Box::new(value))
             .as_ref()
             .downcast_ref::<T>()
-            .unwrap() as *const _;
-
-        // this is safe because child components are dropped before parents.
-        // We also only give out an immutable reference, so there's no need to keep track anyways
-        // If an implementation wants to provide a way of getting a handle for async, then they can
-        unsafe { &*raw_ptr }
+            // this is safe because child components are dropped before parents.
+            // We also only give out an immutable reference, so there's no need to keep track anyways
+            // If an implementation wants to provide a way of getting a handle for async, then they can
+            .map(|f| unsafe { &*(f as *const _) })
+            .unwrap()
     }
 
     /// Try to retrieve a shared state with type T from the any parent Scope.

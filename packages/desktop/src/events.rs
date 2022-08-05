@@ -3,6 +3,7 @@
 use std::any::Any;
 use std::sync::Arc;
 
+use dioxus_core::UiEvent;
 use dioxus_core::{ElementId, EventPriority, UserEvent};
 use dioxus_html::event_bubbles;
 use dioxus_html::on::*;
@@ -63,69 +64,69 @@ pub fn trigger_from_serialized(val: serde_json::Value) -> UserEvent {
     }
 }
 
-fn make_synthetic_event(name: &str, val: serde_json::Value) -> Arc<dyn Any + Send + Sync> {
+fn make_synthetic_event(name: &str, val: serde_json::Value) -> Box<dyn UiEvent> {
     match name {
         "copy" | "cut" | "paste" => {
             //
-            Arc::new(ClipboardData {})
+            Box::new(ClipboardData {})
         }
         "compositionend" | "compositionstart" | "compositionupdate" => {
-            Arc::new(serde_json::from_value::<CompositionData>(val).unwrap())
+            Box::new(serde_json::from_value::<CompositionData>(val).unwrap())
         }
         "keydown" | "keypress" | "keyup" => {
-            let evt = serde_json::from_value::<KeyboardData>(val).unwrap();
-            Arc::new(evt)
+            let evt = serde_json::from_value::<KeyboardEvent>(val).unwrap();
+            Box::new(evt)
         }
         "focus" | "blur" | "focusout" | "focusin" => {
             //
-            Arc::new(FocusData {})
+            Box::new(FocusData {})
         }
 
         // todo: these handlers might get really slow if the input box gets large and allocation pressure is heavy
         // don't have a good solution with the serialized event problem
         "change" | "input" | "invalid" | "reset" | "submit" => {
-            Arc::new(serde_json::from_value::<FormData>(val).unwrap())
+            Box::new(serde_json::from_value::<FormData>(val).unwrap())
         }
 
         "click" | "contextmenu" | "dblclick" | "doubleclick" | "drag" | "dragend" | "dragenter"
         | "dragexit" | "dragleave" | "dragover" | "dragstart" | "drop" | "mousedown"
         | "mouseenter" | "mouseleave" | "mousemove" | "mouseout" | "mouseover" | "mouseup" => {
-            Arc::new(serde_json::from_value::<MouseData>(val).unwrap())
+            Box::new(serde_json::from_value::<MouseData>(val).unwrap())
         }
         "pointerdown" | "pointermove" | "pointerup" | "pointercancel" | "gotpointercapture"
         | "lostpointercapture" | "pointerenter" | "pointerleave" | "pointerover" | "pointerout" => {
-            Arc::new(serde_json::from_value::<PointerData>(val).unwrap())
+            Box::new(serde_json::from_value::<PointerData>(val).unwrap())
         }
         "select" => {
             //
-            Arc::new(serde_json::from_value::<SelectionData>(val).unwrap())
+            Box::new(serde_json::from_value::<SelectionData>(val).unwrap())
         }
 
         "touchcancel" | "touchend" | "touchmove" | "touchstart" => {
-            Arc::new(serde_json::from_value::<TouchData>(val).unwrap())
+            Box::new(serde_json::from_value::<TouchData>(val).unwrap())
         }
 
-        "scroll" => Arc::new(()),
+        "scroll" => Box::new(()),
 
-        "wheel" => Arc::new(serde_json::from_value::<WheelData>(val).unwrap()),
+        "wheel" => Box::new(serde_json::from_value::<WheelEvent>(val).unwrap()),
 
         "animationstart" | "animationend" | "animationiteration" => {
-            Arc::new(serde_json::from_value::<AnimationData>(val).unwrap())
+            Box::new(serde_json::from_value::<AnimationData>(val).unwrap())
         }
 
-        "transitionend" => Arc::new(serde_json::from_value::<TransitionData>(val).unwrap()),
+        "transitionend" => Box::new(serde_json::from_value::<TransitionData>(val).unwrap()),
 
         "abort" | "canplay" | "canplaythrough" | "durationchange" | "emptied" | "encrypted"
         | "ended" | "error" | "loadeddata" | "loadedmetadata" | "loadstart" | "pause" | "play"
         | "playing" | "progress" | "ratechange" | "seeked" | "seeking" | "stalled" | "suspend"
         | "timeupdate" | "volumechange" | "waiting" => {
             //
-            Arc::new(MediaData {})
+            Box::new(MediaData {})
         }
 
-        "toggle" => Arc::new(ToggleData {}),
+        "toggle" => Box::new(ToggleData {}),
 
-        _ => Arc::new(()),
+        _ => Box::new(()),
     }
 }
 

@@ -24,7 +24,7 @@ pub mod on {
     macro_rules! event_directory {
         ( $(
             $( #[$attr:meta] )*
-            $wrapper:ident($data:ident): [
+            $data:ident: [
                 $(
                     $( #[$method_attr:meta] )*
                     $name:ident
@@ -36,23 +36,23 @@ pub mod on {
                     $(#[$method_attr])*
                     pub fn $name<'a>(
                         factory: NodeFactory<'a>,
-                        mut callback: impl FnMut($wrapper) + 'a,
+                        mut callback: impl FnMut(&$data) + 'a,
                         // mut callback: impl FnMut(UiEvent<$data>) + 'a,
                     ) -> Listener<'a>
                     {
                         let bump = &factory.bump();
+                        use std::any::Any;
 
 
-                        use dioxus_core::{AnyEvent};
                         // we can't allocate unsized in bumpalo's box, so we need to craft the box manually
                         // safety: this is essentially the same as calling Box::new() but manually
                         // The box is attached to the lifetime of the bumpalo allocator
-                        let cb: &mut dyn FnMut(AnyEvent) = bump.alloc(move |evt: AnyEvent| {
-                            let event = evt.downcast::<$data>().unwrap();
+                        let cb: &mut dyn FnMut(&dyn Any) = bump.alloc(move |evt: &dyn Any| {
+                            let event = evt.downcast_ref::<$data>().unwrap();
                             callback(event)
                         });
 
-                        let callback: BumpBox<dyn FnMut(AnyEvent) + 'a> = unsafe { BumpBox::from_raw(cb) };
+                        let callback: BumpBox<dyn FnMut(&dyn Any) + 'a> = unsafe { BumpBox::from_raw(cb) };
 
                         // ie oncopy
                         let event_name = stringify!($name);
@@ -71,7 +71,7 @@ pub mod on {
     // The Dioxus Synthetic event system
     // todo: move these into the html event system. dioxus accepts *any* event, so having these here doesn't make sense.
     event_directory! {
-        ClipboardEvent(ClipboardData): [
+        ClipboardEvent: [
             /// Called when "copy"
             oncopy
 
@@ -82,7 +82,7 @@ pub mod on {
             onpaste
         ];
 
-        CompositionEvent(CompositionData): [
+        CompositionEvent: [
             /// oncompositionend
             oncompositionend
 
@@ -93,7 +93,7 @@ pub mod on {
             oncompositionupdate
         ];
 
-        KeyboardEvent(KeyboardData): [
+        KeyboardEvent: [
             /// onkeydown
             onkeydown
 
@@ -104,7 +104,7 @@ pub mod on {
             onkeyup
         ];
 
-        FocusEvent(FocusData): [
+        FocusEvent: [
             /// onfocus
             onfocus
 
@@ -118,7 +118,7 @@ pub mod on {
             onblur
         ];
 
-        FormEvent(FormData): [
+        FormEvent: [
             /// onchange
             onchange
 
@@ -176,7 +176,7 @@ pub mod on {
         /// - [`onmouseout`]
         /// - [`onmouseover`]
         /// - [`onmouseup`]
-        MouseEvent(MouseData): [
+        MouseEvent: [
             /// Execute a callback when a button is clicked.
             ///
             /// ## Description
@@ -262,7 +262,7 @@ pub mod on {
             onmouseup
         ];
 
-        PointerEvent(PointerData): [
+        PointerEvent: [
             /// pointerdown
             onpointerdown
 
@@ -294,12 +294,12 @@ pub mod on {
             onpointerout
         ];
 
-        SelectionEvent(SelectionData): [
+        SelectionEvent: [
             /// onselect
             onselect
         ];
 
-        TouchEvent(TouchData): [
+        TouchEvent: [
             /// ontouchcancel
             ontouchcancel
 
@@ -313,12 +313,12 @@ pub mod on {
             ontouchstart
         ];
 
-        WheelEvent(WheelData): [
+        WheelEvent: [
             ///
             onwheel
         ];
 
-        MediaEvent(MediaData): [
+        MediaEvent: [
             ///abort
             onabort
 
@@ -389,7 +389,7 @@ pub mod on {
             onwaiting
         ];
 
-        AnimationEvent(AnimationData): [
+        AnimationEvent: [
             /// onanimationstart
             onanimationstart
 
@@ -400,35 +400,32 @@ pub mod on {
             onanimationiteration
         ];
 
-        TransitionEvent(TransitionData): [
+        TransitionEvent: [
             ///
             ontransitionend
         ];
 
-        ToggleEvent(ToggleData): [
+        ToggleEvent: [
             ///
             ontoggle
         ];
     }
 
-    pub type ClipboardEvent = UiEvent<ClipboardData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct ClipboardData {
+    pub struct ClipboardEvent {
         // DOMDataTransfer clipboardData
     }
 
-    pub type CompositionEvent = UiEvent<CompositionData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct CompositionData {
+    pub struct CompositionEvent {
         pub data: String,
     }
 
-    pub type KeyboardEvent = UiEvent<KeyboardData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Clone)]
-    pub struct KeyboardData {
+    pub struct KeyboardEvent {
         #[deprecated(
             since = "0.3.0",
             note = "This may not work in all environments. Use key() instead."
@@ -475,7 +472,7 @@ pub mod on {
         pub which: usize,
     }
 
-    impl KeyboardData {
+    impl KeyboardEvent {
         pub fn new(
             key: Key,
             code: Code,
@@ -484,7 +481,7 @@ pub mod on {
             modifiers: Modifiers,
         ) -> Self {
             #[allow(deprecated)]
-            KeyboardData {
+            KeyboardEvent {
                 char_code: key.legacy_charcode(),
                 key: key.to_string(),
                 key_code: KeyCode::from_raw_code(
@@ -553,7 +550,7 @@ pub mod on {
         }
     }
 
-    impl Debug for KeyboardData {
+    impl Debug for KeyboardEvent {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("KeyboardData")
                 .field("key", &self.key())
@@ -565,27 +562,24 @@ pub mod on {
         }
     }
 
-    pub type FocusEvent = UiEvent<FocusData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct FocusData {/* DOMEventInner:  Send + SyncTarget relatedTarget */}
+    pub struct FocusEvent {/* DOMEventInner:  Send + SyncTarget relatedTarget */}
 
-    pub type FormEvent = UiEvent<FormData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct FormData {
+    pub struct FormEvent {
         pub value: String,
         pub values: HashMap<String, String>,
         /* DOMEvent:  Send + SyncTarget relatedTarget */
     }
 
-    pub type MouseEvent = UiEvent<MouseData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Clone)]
     /// Data associated with a mouse event
     ///
     /// Do not use the deprecated fields; they may change or become private in the future.
-    pub struct MouseData {
+    pub struct MouseEvent {
         /// True if the alt key was down when the mouse event was fired.
         #[deprecated(since = "0.3.0", note = "use modifiers() instead")]
         pub alt_key: bool,
@@ -647,7 +641,7 @@ pub mod on {
         // fn get_modifier_state(&self, key_code: &str) -> bool;
     }
 
-    impl MouseData {
+    impl MouseEvent {
         /// Construct MouseData with the specified properties
         ///
         /// Note: the current implementation truncates coordinates. In the future, when we change the internal representation, it may also support a fractional part.
@@ -766,7 +760,7 @@ pub mod on {
         }
     }
 
-    impl Debug for MouseData {
+    impl Debug for MouseEvent {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("MouseData")
                 .field("coordinates", &self.coordinates())
@@ -777,10 +771,9 @@ pub mod on {
         }
     }
 
-    pub type PointerEvent = UiEvent<PointerData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct PointerData {
+    pub struct PointerEvent {
         // Mouse only
         pub alt_key: bool,
         pub button: i16,
@@ -807,15 +800,13 @@ pub mod on {
         // pub get_modifier_state: bool,
     }
 
-    pub type SelectionEvent = UiEvent<SelectionData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct SelectionData {}
+    pub struct SelectionEvent {}
 
-    pub type TouchEvent = UiEvent<TouchData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct TouchData {
+    pub struct TouchEvent {
         pub alt_key: bool,
         pub ctrl_key: bool,
         pub meta_key: bool,
@@ -826,10 +817,9 @@ pub mod on {
         // touches: DOMTouchList,
     }
 
-    pub type WheelEvent = UiEvent<WheelData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Clone)]
-    pub struct WheelData {
+    pub struct WheelEvent {
         #[deprecated(since = "0.3.0", note = "use delta() instead")]
         pub delta_mode: u32,
         #[deprecated(since = "0.3.0", note = "use delta() instead")]
@@ -840,7 +830,7 @@ pub mod on {
         pub delta_z: f64,
     }
 
-    impl WheelData {
+    impl WheelEvent {
         /// Construct a new WheelData with the specified wheel movement delta
         pub fn new(delta: WheelDelta) -> Self {
             let (delta_mode, vector) = match delta {
@@ -850,7 +840,7 @@ pub mod on {
             };
 
             #[allow(deprecated)]
-            WheelData {
+            WheelEvent {
                 delta_mode,
                 delta_x: vector.x,
                 delta_y: vector.y,
@@ -889,7 +879,7 @@ pub mod on {
         }
     }
 
-    impl Debug for WheelData {
+    impl Debug for WheelEvent {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("WheelData")
                 .field("delta", &self.delta())
@@ -897,40 +887,35 @@ pub mod on {
         }
     }
 
-    pub type MediaEvent = UiEvent<MediaData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct MediaData {}
+    pub struct MediaEvent {}
 
-    pub type ImageEvent = UiEvent<ImageData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct ImageData {
+    pub struct ImageEvent {
         pub load_error: bool,
     }
 
-    pub type AnimationEvent = UiEvent<AnimationData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct AnimationData {
+    pub struct AnimationEvent {
         pub animation_name: String,
         pub pseudo_element: String,
         pub elapsed_time: f32,
     }
 
-    pub type TransitionEvent = UiEvent<TransitionData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct TransitionData {
+    pub struct TransitionEvent {
         pub property_name: String,
         pub pseudo_element: String,
         pub elapsed_time: f32,
     }
 
-    pub type ToggleEvent = UiEvent<ToggleData>;
     #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, Clone)]
-    pub struct ToggleData {}
+    pub struct ToggleEvent {}
 }
 
 #[cfg_attr(

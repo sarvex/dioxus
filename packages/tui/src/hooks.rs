@@ -65,9 +65,9 @@ type EventCore = (&'static str, EventData);
 #[derive(Debug)]
 enum EventData {
     Mouse(MouseData),
-    Wheel(WheelData),
+    Wheel(WheelEvent),
     Screen((u16, u16)),
-    Keyboard(KeyboardData),
+    Keyboard(KeyboardEvent),
 }
 impl EventData {
     fn into_any(self) -> Arc<dyn Any + Send + Sync> {
@@ -84,8 +84,8 @@ const MAX_REPEAT_TIME: Duration = Duration::from_millis(100);
 
 pub struct InnerInputState {
     mouse: Option<MouseData>,
-    wheel: Option<WheelData>,
-    last_key_pressed: Option<(KeyboardData, Instant)>,
+    wheel: Option<WheelEvent>,
+    last_key_pressed: Option<(KeyboardEvent, Instant)>,
     screen: Option<(u16, u16)>,
     pub(crate) focus_state: FocusState,
     // subscribers: Vec<Rc<dyn Fn() + 'static>>,
@@ -152,7 +152,7 @@ impl InnerInputState {
                     .is_some();
 
                 if is_repeating {
-                    *k = KeyboardData::new(k.key(), k.code(), k.location(), true, k.modifiers());
+                    *k = KeyboardEvent::new(k.key(), k.code(), k.location(), true, k.modifiers());
                 }
 
                 self.last_key_pressed = Some((k.clone(), Instant::now()));
@@ -737,7 +737,7 @@ fn get_event(evt: TermEvent) -> Option<(&'static str, EventData)> {
 
             let get_wheel_data = |up| {
                 let y = if up { -1.0 } else { 1.0 };
-                EventData::Wheel(WheelData::new(WheelDelta::lines(0., y, 0.)))
+                EventData::Wheel(WheelEvent::new(WheelDelta::lines(0., y, 0.)))
             };
 
             match m.kind {
@@ -762,7 +762,7 @@ fn translate_key_event(event: crossterm::event::KeyEvent) -> Option<EventData> {
     let code = guess_code_from_crossterm_key_code(event.code)?;
     let modifiers = modifiers_from_crossterm_modifiers(event.modifiers);
 
-    Some(EventData::Keyboard(KeyboardData::new(
+    Some(EventData::Keyboard(KeyboardEvent::new(
         key,
         code,
         Location::Standard,

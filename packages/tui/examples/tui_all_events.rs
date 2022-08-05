@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dioxus_html::on::{FocusData, KeyboardData, MouseData, WheelData};
+use dioxus_html::on::{FocusData, KeyboardEvent, MouseData, WheelEvent};
 use std::sync::Arc;
 
 fn main() {
@@ -14,11 +14,11 @@ enum Event {
     MouseDown(Arc<MouseData>),
     MouseUp(Arc<MouseData>),
 
-    Wheel(Arc<WheelData>),
+    Wheel(Arc<WheelEvent>),
 
-    KeyDown(Arc<KeyboardData>),
-    KeyUp(Arc<KeyboardData>),
-    KeyPress(Arc<KeyboardData>),
+    KeyDown(Arc<KeyboardEvent>),
+    KeyUp(Arc<KeyboardEvent>),
+    KeyPress(Arc<KeyboardEvent>),
 
     FocusIn(Arc<FocusData>),
     FocusOut(Arc<FocusData>),

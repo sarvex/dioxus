@@ -185,7 +185,7 @@ fn virtual_event_from_websys_event(
                 data: evt.data().unwrap_or_default(),
             })
         }
-        "keydown" | "keypress" | "keyup" => Arc::new(KeyboardData::from(event)),
+        "keydown" | "keypress" | "keyup" => Arc::new(KeyboardEvent::from(event)),
         "focus" | "blur" | "focusout" | "focusin" => Arc::new(FocusData {}),
 
         // todo: these handlers might get really slow if the input box gets large and allocation pressure is heavy
@@ -279,7 +279,7 @@ fn virtual_event_from_websys_event(
         "touchcancel" | "touchend" | "touchmove" | "touchstart" => Arc::new(TouchData::from(event)),
 
         "scroll" => Arc::new(()),
-        "wheel" => Arc::new(WheelData::from(event)),
+        "wheel" => Arc::new(WheelEvent::from(event)),
         "animationstart" | "animationend" | "animationiteration" => {
             Arc::new(AnimationData::from(event))
         }

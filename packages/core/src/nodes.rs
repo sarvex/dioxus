@@ -6,10 +6,11 @@
 use crate::{
     innerlude::{AttributeValue, ComponentPtr, Element, Properties, Scope, ScopeId, ScopeState},
     lazynodes::LazyNodes,
-    AnyEvent, Component,
+    Component,
 };
 use bumpalo::{boxed::Box as BumpBox, Bump};
 use std::{
+    any::Any,
     cell::{Cell, RefCell},
     fmt::{Arguments, Debug, Formatter},
 };
@@ -374,7 +375,7 @@ pub struct Listener<'bump> {
 }
 
 pub type InternalHandler<'bump> = &'bump RefCell<Option<InternalListenerCallback<'bump>>>;
-type InternalListenerCallback<'bump> = BumpBox<'bump, dyn FnMut(AnyEvent) + 'bump>;
+type InternalListenerCallback<'bump> = BumpBox<'bump, dyn FnMut(&dyn Any) + 'bump>;
 
 type ExternalListenerCallback<'bump, T> = BumpBox<'bump, dyn FnMut(T) + 'bump>;
 

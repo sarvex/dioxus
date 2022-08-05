@@ -4,19 +4,7 @@
 //! This is all kinda WIP, but the bones are there.
 
 use crate::{ElementId, ScopeId};
-use std::{any::Any, cell::Cell, fmt::Debug, rc::Rc, sync::Arc};
-
-pub(crate) struct BubbleState {
-    pub canceled: Cell<bool>,
-}
-
-impl BubbleState {
-    pub fn new() -> Self {
-        Self {
-            canceled: Cell::new(false),
-        }
-    }
-}
+use std::fmt::Debug;
 
 /// User Events are events that are shuttled from the renderer into the [`VirtualDom`] through the scheduler channel.
 ///
@@ -49,7 +37,7 @@ impl BubbleState {
 ///     }
 /// )).unwrap();
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct UserEvent {
     /// The originator of the event trigger if available
     pub scope_id: Option<ScopeId>,
@@ -67,7 +55,7 @@ pub struct UserEvent {
     pub bubbles: bool,
 
     /// The event data to be passed onto the event handler
-    pub data: Arc<dyn Any + Send + Sync>,
+    pub data: Box<dyn UiEvent>,
 }
 
 /// Priority of Event Triggers.
@@ -123,60 +111,9 @@ pub enum EventPriority {
 }
 
 /// The internal Dioxus type that carries any event data to the relevant handler.
-
-pub struct AnyEvent {
-    pub(crate) bubble_state: Rc<BubbleState>,
-    pub(crate) data: Arc<dyn Any + Send + Sync>,
-}
-
-impl AnyEvent {
-    /// Convert this [`AnyEvent`] into a specific [`UiEvent`] with [`EventData`].
+pub trait UiEvent: Debug + Send + 'static {
+    /// Should Dioxus try to bubble the event upwards?
     ///
-    /// ```rust, ignore
-    /// let evt: FormEvent = evvt.downcast().unwrap();
-    /// ```
-    #[must_use]
-    pub fn downcast<T: Send + Sync + 'static>(self) -> Option<UiEvent<T>> {
-        let AnyEvent { data, bubble_state } = self;
-
-        data.downcast::<T>()
-            .ok()
-            .map(|data| UiEvent { data, bubble_state })
-    }
-}
-
-/// A [`UiEvent`] is a type that wraps various [`EventData`].
-///
-/// You should prefer to use the name of the event directly, rather than
-/// the [`UiEvent`]<T> generic type.
-///
-/// For the HTML crate, this would include `MouseEvent`, `FormEvent` etc.
-pub struct UiEvent<T> {
-    /// The internal data of the event
-    /// This is wrapped in an Arc so that it can be sent across threads
-    pub data: Arc<T>,
-
-    #[allow(unused)]
-    bubble_state: Rc<BubbleState>,
-}
-
-impl<T: Debug> std::fmt::Debug for UiEvent<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("UiEvent").field("data", &self.data).finish()
-    }
-}
-
-impl<T> std::ops::Deref for UiEvent<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        self.data.as_ref()
-    }
-}
-
-impl<T> UiEvent<T> {
-    /// Prevent this event from bubbling up the tree.
-    pub fn cancel_bubble(&self) {
-        self.bubble_state.canceled.set(true);
-    }
+    /// This can can be used to prevent the event from bubbling up the tree
+    fn should_bubble(&self) -> bool;
 }

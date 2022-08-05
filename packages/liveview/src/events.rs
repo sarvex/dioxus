@@ -61,7 +61,7 @@ fn make_synthetic_event(name: &str, val: serde_json::Value) -> Arc<dyn Any + Sen
             Arc::new(serde_json::from_value::<CompositionData>(val).unwrap())
         }
         "keydown" | "keypress" | "keyup" => {
-            let evt = serde_json::from_value::<KeyboardData>(val).unwrap();
+            let evt = serde_json::from_value::<KeyboardEvent>(val).unwrap();
             Arc::new(evt)
         }
         "focus" | "blur" | "focusout" | "focusin" => {
@@ -95,7 +95,7 @@ fn make_synthetic_event(name: &str, val: serde_json::Value) -> Arc<dyn Any + Sen
 
         "scroll" => Arc::new(()),
 
-        "wheel" => Arc::new(serde_json::from_value::<WheelData>(val).unwrap()),
+        "wheel" => Arc::new(serde_json::from_value::<WheelEvent>(val).unwrap()),
 
         "animationstart" | "animationend" | "animationiteration" => {
             Arc::new(serde_json::from_value::<AnimationData>(val).unwrap())

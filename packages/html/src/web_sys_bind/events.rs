@@ -1,8 +1,8 @@
 use crate::geometry::{ClientPoint, Coordinates, ElementPoint, PagePoint, ScreenPoint};
 use crate::input_data::{decode_key_location, decode_mouse_button_set, MouseButton};
 use crate::on::{
-    AnimationData, CompositionData, KeyboardData, MouseData, PointerData, TouchData,
-    TransitionData, WheelData,
+    AnimationData, CompositionData, KeyboardEvent, MouseData, PointerData, TouchData,
+    TransitionData, WheelEvent,
 };
 use keyboard_types::{Code, Key, Modifiers};
 use std::convert::TryInto;
@@ -38,11 +38,11 @@ macro_rules! uncheck_convert {
 
 uncheck_convert![
     CompositionEvent => CompositionData,
-    KeyboardEvent    => KeyboardData,
+    KeyboardEvent    => KeyboardEvent,
     MouseEvent       => MouseData,
     TouchEvent       => TouchData,
     PointerEvent     => PointerData,
-    WheelEvent       => WheelData,
+    WheelEvent       => WheelEvent,
     AnimationEvent   => AnimationData,
     TransitionEvent  => TransitionData,
 ];
@@ -55,7 +55,7 @@ impl From<&CompositionEvent> for CompositionData {
     }
 }
 
-impl From<&KeyboardEvent> for KeyboardData {
+impl From<&KeyboardEvent> for KeyboardEvent {
     fn from(e: &KeyboardEvent) -> Self {
         let mut modifiers = Modifiers::empty();
 
@@ -158,9 +158,9 @@ impl From<&PointerEvent> for PointerData {
     }
 }
 
-impl From<&WheelEvent> for WheelData {
+impl From<&WheelEvent> for WheelEvent {
     fn from(e: &WheelEvent) -> Self {
-        WheelData::from_web_attributes(e.delta_mode(), e.delta_x(), e.delta_y(), e.delta_z())
+        WheelEvent::from_web_attributes(e.delta_mode(), e.delta_x(), e.delta_y(), e.delta_z())
     }
 }
 

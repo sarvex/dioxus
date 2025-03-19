@@ -69,6 +69,7 @@ use http::header::*;
 
 use std::sync::Arc;
 
+use crate::render::SSRError;
 use crate::{prelude::*, ContextProviders};
 
 /// A extension trait with utilities for integrating Dioxus with your Axum router.
@@ -375,15 +376,6 @@ pub async fn render_handler(
     State(state): State<RenderHandleState>,
     request: Request<Body>,
 ) -> impl IntoResponse {
-    // Only respond to requests for HTML
-    if let Some(mime) = request.headers().get("Accept") {
-        let mime = mime.to_str().map(|mime| mime.to_ascii_lowercase());
-        match mime {
-            Ok(accepts) if accepts.contains("text/html") => {}
-            _ => return Err(StatusCode::NOT_ACCEPTABLE),
-        }
-    }
-
     let cfg = &state.config;
     let ssr_state = state.ssr_state();
     let build_virtual_dom = {
@@ -420,11 +412,18 @@ pub async fn render_handler(
             freshness.write(response.headers_mut());
             let headers = server_context.response_parts().headers.clone();
             apply_request_parts_to_response(headers, &mut response);
-            Ok(response)
+            Result::<http::Response<axum::body::Body>, StatusCode>::Ok(response)
         }
-        Err(e) => {
+        Err(SSRError::Incremental(e)) => {
             tracing::error!("Failed to render page: {}", e);
             Ok(report_err(e).into_response())
+        }
+        Err(SSRError::Routing(e)) => {
+            tracing::trace!("Page not found: {}", e);
+            Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from("Page not found"))
+                .unwrap())
         }
     }
 }

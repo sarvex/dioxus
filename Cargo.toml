@@ -189,7 +189,7 @@ const_format = "0.2.32"
 cargo_toml = { version = "0.20.3" }
 tauri-utils = { version = "=2.1.1" }
 tauri-bundler = { version = "=2.2.3" }
-lru = "0.12.2"
+lru = "0.16.3"
 async-trait = "0.1.77"
 axum = "0.7.0"
 axum-server = { version = "0.7.1", default-features = false }
